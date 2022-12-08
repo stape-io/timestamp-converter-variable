@@ -1,4 +1,6 @@
-homepage: "https://stape.io/"
+homepage: 'https://stape.io/'
 versions:
+  - sha: 239f95f803b6d6d41458697d0c31895a5bceadc8
+    changeNotes: Update convertTimestampToISO
   - sha: cfe8aabf346d71a76a0bb710951ad7656081c1d3
     changeNotes: Initial release.

@@ -1,97 +1,74 @@
 ﻿const makeInteger = require('makeInteger');
 const Math = require('Math');
 const getTimestampMillis = require('getTimestampMillis');
+const makeString = require('makeString');
 
 const leapYear = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 const nonLeapYear = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
-function convertTimestampToISO(timestamp) {
-  const daysSinceEpoch = Math.floor(timestamp / (1000 * 60 * 60 * 24));
-  let hoursSinceYesterday = Math.floor(
-    (timestamp - daysSinceEpoch * (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-  );
-  let minutesSinceYesterday = Math.floor(
-    (timestamp -
-      daysSinceEpoch * (1000 * 60 * 60 * 24) -
-      hoursSinceYesterday * (1000 * 60 * 60)) /
-      (1000 * 60)
-  );
-  let secondsSinceYesterday = Math.floor(
-    (timestamp -
-      daysSinceEpoch * (1000 * 60 * 60 * 24) -
-      hoursSinceYesterday * (1000 * 60 * 60) -
-      minutesSinceYesterday * 1000 * 60) /
-      1000
-  );
-  let milliSeconds = Math.floor(
-    (secondsSinceYesterday - Math.floor(secondsSinceYesterday)) * 1000
-  );
-
-  let startYear = 1970;
-  let startMonth = 1;
-  let dayCounter = 0;
-  const approxYears = daysSinceEpoch / 365;
-
-  while (dayCounter < daysSinceEpoch && startYear - 1969 < approxYears) {
-    if (startYear % 4 === 0) {
-      dayCounter = dayCounter + 366;
-    } else {
-      dayCounter = dayCounter + 365;
-    }
-    startYear++;
+const secToMs = (s) => s * 1000;
+const minToMs = (m) => m * secToMs(60);
+const hoursToMs = (h) => h * minToMs(60);
+const daysToMs = (d) => d * hoursToMs(24);
+const padStart = (value, length) => {
+  let result = makeString(value);
+  while (result.length < length) {
+    result = '0' + result;
   }
+  return result;
+};
 
-  let remainingDays = daysSinceEpoch + 1 - dayCounter;
-  const calcYear = startYear % 4 !== 0 ? nonLeapYear : leapYear;
+function convertTimestampToISO(timestamp) {
+  const fourYearsInMs = daysToMs(365 * 4 + 1);
+  let year = 1970 + Math.floor(timestamp / fourYearsInMs) * 4;
+  timestamp = timestamp % fourYearsInMs;
 
-  let monthdayCounter = calcYear[0];
-  while (monthdayCounter < remainingDays) {
-    startMonth++;
-    if (monthdayCounter + calcYear[startMonth - 1] > remainingDays) {
+  while (true) {
+    let isLeapYear = year % 4 === 0;
+    let nextTimestamp = timestamp - daysToMs(isLeapYear ? 366 : 365);
+    if (nextTimestamp < 0) {
       break;
     }
-    monthdayCounter = monthdayCounter + calcYear[startMonth - 1];
+    timestamp = nextTimestamp;
+    year = year + 1;
   }
 
-  remainingDays =
-    startMonth !== 1 ? remainingDays - monthdayCounter : remainingDays;
+  const daysByMonth = year % 4 === 0 ? leapYear : nonLeapYear;
 
-  let startDate = remainingDays;
-
-  startMonth = startMonth < 10 ? '0' + startMonth : startMonth;
-  startDate = startDate < 10 ? '0' + startDate : startDate;
-  hoursSinceYesterday =
-    hoursSinceYesterday < 10 ? '0' + hoursSinceYesterday : hoursSinceYesterday;
-  minutesSinceYesterday =
-    minutesSinceYesterday < 10
-      ? '0' + minutesSinceYesterday
-      : minutesSinceYesterday;
-  secondsSinceYesterday =
-    secondsSinceYesterday < 10
-      ? '0' + secondsSinceYesterday
-      : secondsSinceYesterday;
-
-  if (milliSeconds < 10) {
-    milliSeconds = '00' + milliSeconds;
-  } else if (milliSeconds < 100) {
-    milliSeconds = '0' + milliSeconds;
+  let month = 0;
+  for (let i = 0; i < daysByMonth.length; i++) {
+    let msInThisMonth = daysToMs(daysByMonth[i]);
+    if (timestamp > msInThisMonth) {
+      timestamp = timestamp - msInThisMonth;
+    } else {
+      month = i + 1;
+      break;
+    }
   }
+  let date = Math.ceil(timestamp / daysToMs(1));
+  timestamp = timestamp - daysToMs(date - 1);
+  let hours = Math.floor(timestamp / hoursToMs(1));
+  timestamp = timestamp - hoursToMs(hours);
+  let minutes = Math.floor(timestamp / minToMs(1));
+  timestamp = timestamp - minToMs(minutes);
+  let sec = Math.floor(timestamp / secToMs(1));
+  timestamp = timestamp - secToMs(sec);
+  let milliSeconds = timestamp;
 
-  // Variables must return a value.
   return (
-    startYear +
+    year +
     '-' +
-    startMonth +
+    padStart(month, 2) +
     '-' +
-    startDate +
+    padStart(date, 2) +
     'T' +
-    hoursSinceYesterday +
+    padStart(hours, 2) +
     ':' +
-    minutesSinceYesterday +
+    padStart(minutes, 2) +
     ':' +
-    secondsSinceYesterday +
+    padStart(sec, 2) +
     '.' +
-    milliSeconds +
+    padStart(milliSeconds, 3) +
     'Z'
   );
 }
@@ -160,7 +137,7 @@ if (type === 'to_iso') {
   return convertTimestampToISO(
     data.timestamp === 'current_timestamp'
       ? getTimestampMillis()
-      : makeInteger(data.timestamp+'000')
+      : makeInteger(data.timestamp + '000')
   );
 } else if (type === 'to_timestamp') {
   return makeInteger(convertISOToTime(data.iso8601DateTime));
