@@ -28,3 +28,6 @@
 Initial development of timestamp <-> ISO was done by [Ram Manohar](https://www.linkedin.com/in/rammanoharbokkisa/).
 
 Timestamp Converter Variable for GTM Server is developing and maintained by [Stape Team](https://stape.io/) under the Apache 2.0 license.
+
+### GTM Gallery Status
+🟢 [Listed](https://tagmanager.google.com/gallery/#/owners/stape-io/templates/timestamp-converter-variable)
